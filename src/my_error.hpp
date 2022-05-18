@@ -9,6 +9,7 @@ enum error_code : int32_t {
   invalid_field_type,
   field_invariant_check_failed,
   field_value_synchronization_failed,
+  save_callback_failed,
   error_num
 };
 using error = int32_t;

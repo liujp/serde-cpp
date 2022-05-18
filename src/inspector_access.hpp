@@ -12,21 +12,15 @@
 #include <tuple>
 #include <utility>
 #include <variant>
+#include <cassert>
 
 #include "inspector_access_type.hpp"
 #include "my_error.hpp"
 #include "span.hpp"
 #include "type_def.h"
 #include "inspector_access_base.hpp"
+#include "type_id.hpp"
 
-struct always_true_t {
-  template <class... Ts>
-  [[nodiscard]] constexpr bool operator()(Ts &&...) const noexcept {
-    return true;
-  }
-};
-
-constexpr auto always_true = always_true_t{};
 template <class> constexpr bool assertion_failed_v = false;
 
 // Converts a setter that returns void, error or bool to a sync function object
@@ -256,6 +250,7 @@ bool save_field(Inspector &f, std::string_view field_name,
 /// Customization point for adding support for a custom type.
 template <class T> struct inspector_access;
 
+
 // -- inspection support for optional values -----------------------------------
 
 struct optional_inspector_traits_base {
@@ -265,78 +260,6 @@ struct optional_inspector_traits_base {
 };
 
 template <class T> struct optional_inspector_traits;
-
-// CAF_PUSH_DEPRECATED_WARNING
-
-template <class T>
-struct optional_inspector_traits<std::optional<T>>
-    : optional_inspector_traits_base {
-  using container_type = optional<T>;
-
-  using value_type = T;
-
-  template <class... Ts>
-  static void emplace(container_type &container, Ts &&... xs) {
-    container.emplace(std::forward<Ts>(xs)...);
-  }
-};
-
-// CAF_POP_WARNINGS
-/*
-template <class T>
-struct optional_inspector_traits<intrusive_ptr<T>>
-    : optional_inspector_traits_base {
-  using container_type = intrusive_ptr<T>;
-
-  using value_type = T;
-
-  template <class... Ts>
-  static void emplace(container_type &container, Ts &&... xs) {
-    container.reset(new T(std::forward<Ts>(xs)...));
-  }
-};
-
-template <class T> struct optional_inspector_traits<intrusive_cow_ptr<T>> {
-  using container_type = intrusive_cow_ptr<T>;
-
-  using value_type = T;
-
-  template <class... Ts>
-  static void emplace(container_type &container, Ts &&... xs) {
-    container.reset(new T(std::forward<Ts>(xs)...));
-  }
-
-  static value_type &deref_load(container_type &x) { return x.unshared(); }
-
-  static const value_type &deref_save(container_type &x) { return *x; }
-};
-*/
-
-template <class T>
-struct optional_inspector_traits<std::unique_ptr<T>>
-    : optional_inspector_traits_base {
-  using container_type = std::unique_ptr<T>;
-
-  using value_type = T;
-
-  template <class... Ts>
-  static void emplace(container_type &container, Ts &&... xs) {
-    container = std::make_unique<T>(std::forward<Ts>(xs)...);
-  }
-};
-
-template <class T>
-struct optional_inspector_traits<std::shared_ptr<T>>
-    : optional_inspector_traits_base {
-  using container_type = std::shared_ptr<T>;
-
-  using value_type = T;
-
-  template <class... Ts>
-  static void emplace(container_type &container, Ts &&... xs) {
-    container = std::make_shared<T>(std::forward<Ts>(xs)...);
-  }
-};
 
 /// Provides inspector access for types that represent optional values.
 template <class T> struct optional_inspector_access {
@@ -386,16 +309,10 @@ template <class T> struct optional_inspector_access {
 };
 
 // -- inspection support for optional<T> ---------------------------------------
-
-// CAF_PUSH_DEPRECATED_WARNING
-
 template <class T>
 struct inspector_access<std::optional<T>>
-    : optional_inspector_access<optional<T>> {
-  // nop
-};
+    : optional_inspector_access<std::optional<T>> {};
 
-// CAF_POP_WARNINGS
 
 template <class T>
 struct optional_inspector_traits<std::optional<T>>
@@ -408,20 +325,6 @@ struct optional_inspector_traits<std::optional<T>>
   static void emplace(container_type &container, Ts &&... xs) {
     container.emplace(std::forward<Ts>(xs)...);
   }
-};
-
-template <class T>
-struct inspector_access<std::optional<T>>
-    : optional_inspector_access<std::optional<T>> {
-  // nop
-};
-
-// -- inspection support for error ---------------------------------------------
-
-template <>
-struct inspector_access<std::unique_ptr<error>>
-    : optional_inspector_access<std::unique_ptr<error>> {
-  // nop
 };
 
 // -- inspection support for std::byte -----------------------------------------
@@ -617,8 +520,7 @@ struct inspector_access<std::chrono::duration<Rep, Period>>
         return str;
       };
       auto set = [&x](std::string str) {
-        auto err = parse(str, x);
-        return !err;
+        return false;
       };
       return f.apply(get, set);
     } else {
@@ -647,7 +549,7 @@ struct inspector_access<
         print(str, x);
         return str;
       };
-      auto set = [&x](std::string str) { return parse(str, x); };
+      auto set = [&x](std::string str) { return true; };
       return f.apply(get, set);
     } else {
       using rep_type = typename Duration::rep;
@@ -661,8 +563,133 @@ struct inspector_access<
   }
 };
 
+
+// print functions
+
+template <class Buffer>
+void print(Buffer& buf, bool x) {
+  using namespace std::literals;
+  auto str = x ? "true"sv : "false"sv;
+  buf.insert(buf.end(), str.begin(), str.end());
+}
+
+template <class Buffer, class T>
+std::enable_if_t<std::is_integral<T>::value> print(Buffer& buf, T x) {
+  // An integer can at most have 20 digits (UINT64_MAX).
+  char stack_buffer[24];
+  char* p = stack_buffer;
+  // Convert negative values into positives as necessary.
+  if constexpr (std::is_signed<T>::value) {
+    if (x == std::numeric_limits<T>::min()) {
+      using namespace std::literals;
+      // The code below would fail for the smallest value, because this value
+      // has no positive counterpart. For example, an int8_t ranges from -128 to
+      // 127. Hence, an int8_t cannot represent `abs(-128)`.
+      std::string_view result;
+      if constexpr (sizeof(T) == 1) {
+        result = "-128"sv;
+      } else if constexpr (sizeof(T) == 2) {
+        result = "-32768"sv;
+      } else if constexpr (sizeof(T) == 4) {
+        result = "-2147483648"sv;
+      } else {
+        static_assert(sizeof(T) == 8);
+        result = "-9223372036854775808"sv;
+      }
+      buf.insert(buf.end(), result.begin(), result.end());
+      return;
+    }
+    if (x < 0) {
+      buf.push_back('-');
+      x = -x;
+    }
+  }
+  // Fill the buffer.
+  *p++ = static_cast<char>((x % 10) + '0');
+  x /= 10;
+  while (x != 0) {
+    *p++ = static_cast<char>((x % 10) + '0');
+    x /= 10;
+  }
+  // Now, the buffer holds the string representation in reverse order.
+  do {
+    buf.push_back(*--p);
+  } while (p != stack_buffer);
+}
+
+template <class Buffer, class T>
+std::enable_if_t<std::is_floating_point<T>::value> print(Buffer& buf, T x) {
+  // TODO: Check whether to_chars is available on supported compilers and
+  //       re-implement using the new API as soon as possible.
+  auto str = std::to_string(x);
+  if (str.find('.') != std::string::npos) {
+    // Drop trailing zeros.
+    while (str.back() == '0')
+      str.pop_back();
+    // Drop trailing dot as well if we've removed all decimal places.
+    if (str.back() == '.')
+      str.pop_back();
+  }
+  buf.insert(buf.end(), str.begin(), str.end());
+}
+
+template <class Buffer, class Rep, class Period>
+void print(Buffer& buf, std::chrono::duration<Rep, Period> x) {
+  using namespace std::literals;
+  if (x.count() == 0) {
+    auto str = "0s"sv;
+    buf.insert(buf.end(), str.begin(), str.end());
+    return;
+  }
+  auto try_print = [&buf](auto converted, std::string_view suffix) {
+    if (converted.count() < 1)
+      return false;
+    print(buf, converted.count());
+    buf.insert(buf.end(), suffix.begin(), suffix.end());
+    return true;
+  };
+
+  using hours = std::chrono::duration<double, std::ratio<3600>>;
+  using minutes = std::chrono::duration<double, std::ratio<60>>;
+  using seconds = std::chrono::duration<double>;
+  using milliseconds = std::chrono::duration<double, std::milli>;
+  using microseconds = std::chrono::duration<double, std::micro>;
+  if (try_print(std::chrono::duration_cast<hours>(x), "h")
+      || try_print(std::chrono::duration_cast<minutes>(x), "min")
+      || try_print(std::chrono::duration_cast<seconds>(x), "s")
+      || try_print(std::chrono::duration_cast<milliseconds>(x), "ms")
+      || try_print(std::chrono::duration_cast<microseconds>(x), "us"))
+    return;
+  auto converted = std::chrono::duration_cast<std::chrono::nanoseconds>(x);
+  print(buf, converted.count());
+  auto suffix = "ns"sv;
+  buf.insert(buf.end(), suffix.begin(), suffix.end());
+}
+
+// size_t print_timestamp_v1(char* buf, size_t buf_size, time_t ts, size_t ms) {
+//   tm time_buf;
+// #ifdef CAF_MSVC
+//   localtime_s(&time_buf, &ts);
+// #else
+//   localtime_r(&ts, &time_buf);
+// #endif
+//   auto pos = strftime(buf, buf_size, "%FT%T", &time_buf);
+//   buf[pos++] = '.';
+//   if (ms > 0) {
+//     assert(ms < 1000);
+//     buf[pos++] = static_cast<char>((ms / 100) + '0');
+//     buf[pos++] = static_cast<char>(((ms % 100) / 10) + '0');
+//     buf[pos++] = static_cast<char>((ms % 10) + '0');
+//   } else {
+//     for (int i = 0; i < 3; ++i)
+//       buf[pos++] = '0';
+//   }
+//   buf[pos] = '\0';
+//   return pos;
+// }
+
 template <class Buffer, class Duration>
-void print(Buffer &buf,
+void print(Buffer& buf,
            std::chrono::time_point<std::chrono::system_clock, Duration> x) {
   namespace sc = std::chrono;
   using clock_type = sc::system_clock;
@@ -675,11 +702,5 @@ void print(Buffer &buf,
   // We print in ISO 8601 format, e.g., "2020-09-01T15:58:42.372". 32-Bytes are
   // more than enough space.
   char stack_buffer[32];
-  auto pos =
-      print_timestamp(stack_buffer, 32, secs, static_cast<size_t>(msecs));
-  buf.insert(buf.end(), stack_buffer, stack_buffer + pos);
-}
-
-template <class T> void parse(std::string_view str, T &x) {
-  std::cout << str << std::endl;
+  buf.insert(buf.end(), stack_buffer, stack_buffer);
 }

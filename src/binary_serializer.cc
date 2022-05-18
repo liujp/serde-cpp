@@ -80,6 +80,7 @@ bool binary_serializer::begin_field(std::string_view, bool is_present,
   }
 }
 
+// all the serialize entry
 bool binary_serializer::value(span<const std::byte> x) {
   assert(write_pos_ <= buf_.size());
   auto buf_size = buf_.size();
@@ -101,6 +102,7 @@ bool binary_serializer::value(span<const std::byte> x) {
   return true;
 }
 
+// all the serialize entry
 bool binary_serializer::value(std::byte x) {
   if (write_pos_ == buf_.size())
     buf_.emplace_back(x);

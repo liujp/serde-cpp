@@ -41,7 +41,7 @@ struct inspector_access_base {
                          IsValid& is_valid, SyncValue& sync_value,
                          SetFallback& set_fallback) {
     bool is_present = false;
-    if (!f.begin_field(field_name, is_present))
+    if (!f.begin_field(field_name, is_present)) /*write is present to buf*/
       return false;
     if (is_present) {
       if (!f.apply(x))
@@ -66,9 +66,9 @@ struct inspector_access_base {
   /// Saves a mandatory field to `f`.
   template <class Inspector>
   static bool save_field(Inspector& f, std::string_view field_name, T& x) {
-    return f.begin_field(field_name) //
+    return f.begin_field(field_name) /*return true*/
            && f.apply(x)             //
-           && f.end_field();
+           && f.end_field(); /*return true*/
   }
 
   /// Saves an optional field to `f`.
@@ -77,7 +77,7 @@ struct inspector_access_base {
                          IsPresent& is_present, Get& get) {
     if (is_present()) {
       auto&& x = get();
-      return f.begin_field(field_name, true) //
+      return f.begin_field(field_name, true) /*write 'true' to buf*/
              && f.apply(x)                   //
              && f.end_field();
     }

@@ -10,7 +10,8 @@
 
 #include "def_traits.hpp"
 #include "span.hpp"
-#include "inspector_access.hpp"
+
+template <class> struct inspector_access;
 
 /// Wraps tag types for static dispatching.
 struct inspector_access_type {

@@ -13,10 +13,10 @@ public:
   save_inspector() = default;
   virtual ~save_inspector() {}
 
-  void set_error(error &stop_reason) { err_ = std::move(stop_reason); }
+  void set_error(const error &stop_reason) { err_ = stop_reason; }
 
   template <class... Ts> void emplace_error(Ts &&... xs) {
-    err_ = set_error(100);
+    set_error(100);
   }
 
   const error &get_error() const noexcept { return err_; }
@@ -131,7 +131,7 @@ public:
         return false;
       if constexpr (std::is_same<save_callback_result, bool>::value) {
         if (!save_callback()) {
-          f->set_error(sec::save_callback_failed);
+          f->set_error(error_code::save_callback_failed);
           return false;
         }
       } else {

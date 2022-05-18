@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <vector>
 
-// #include "save_inspector_base.hpp"
+#include "save_inspector_base.hpp"
 #include "span.hpp"
 #include "squashed_int.hpp"
 #include "type_def.h"
@@ -13,7 +13,7 @@
 
 using byte_buffer = std::vector<std::byte>;
 
-class binary_serializer /*: public save_inspector_base<binary_serializer>*/ {
+class binary_serializer : public save_inspector_base<binary_serializer> {
 public:
   // using super = save_inspector_base<binary_serializer>;
   using container_type = byte_buffer;
