@@ -21,6 +21,15 @@
 #include "type_def.h"
 #include "type_id.hpp"
 
+struct always_true_t {
+  template <class... Ts>
+  [[nodiscard]] constexpr bool operator()(Ts &&...) const noexcept {
+    return true;
+  }
+};
+
+constexpr auto always_true = always_true_t{};
+
 template <class> constexpr bool assertion_failed_v = false;
 
 // Converts a setter that returns void, error or bool to a sync function object

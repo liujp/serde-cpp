@@ -290,3 +290,11 @@ private:
 public:
   static constexpr bool value = sfinae_result::value;
 };
+
+/// Utility trait for checking whether T is a `std::pair`.
+template <class T> struct is_pair : std::false_type {};
+
+template <class First, class Second>
+struct is_pair<std::pair<First, Second>> : std::true_type {};
+
+template <class T> constexpr bool is_pair_v = is_pair<T>::value;

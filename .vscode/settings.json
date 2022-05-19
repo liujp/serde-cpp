@@ -59,6 +59,7 @@
         "typeinfo": "cpp",
         "hashtable": "cpp",
         "variant": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "cassert": "cpp"
     }
 }
