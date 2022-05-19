@@ -15,9 +15,7 @@ public:
 
   void set_error(const error &stop_reason) { err_ = stop_reason; }
 
-  template <class... Ts> void emplace_error(Ts &&... xs) {
-    set_error(100);
-  }
+  template <class... Ts> void emplace_error(Ts &&... xs) { set_error(100); }
 
   const error &get_error() const noexcept { return err_; }
 

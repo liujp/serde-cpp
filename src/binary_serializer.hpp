@@ -29,7 +29,9 @@ public:
   static constexpr bool has_human_readable_format() noexcept { return false; }
   void seek(size_t offset) noexcept { write_pos_ = offset; }
   void skip(size_t num_bytes);
-  constexpr bool begin_object(type_id_t, std::string_view) noexcept {return true; }
+  constexpr bool begin_object(type_id_t, std::string_view) noexcept {
+    return true;
+  }
   constexpr bool end_object() { return true; }
   constexpr bool begin_field(std::string_view) noexcept { return true; }
   bool begin_field(std::string_view, bool is_present);

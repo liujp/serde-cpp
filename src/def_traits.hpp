@@ -93,8 +93,8 @@ constexpr bool is_allowed_unsafe_message_type_v =
   }
 
 /// Checks whether `T` is primitive, i.e., either an arithmetic type or
-/// cv-qualified bool, char, char8_t (since C++20), char16_t, char32_t, wchar_t, 
-/// short, int, long, long long,float, double, long double; 
+/// cv-qualified bool, char, char8_t (since C++20), char16_t, char32_t, wchar_t,
+/// short, int, long, long long,float, double, long double;
 template <class T, bool IsLoading> struct is_builtin_inspector_type {
   static constexpr bool value = std::is_arithmetic<T>::value;
 };

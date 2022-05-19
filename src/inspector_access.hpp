@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -12,13 +13,12 @@
 #include <tuple>
 #include <utility>
 #include <variant>
-#include <cassert>
 
+#include "inspector_access_base.hpp"
 #include "inspector_access_type.hpp"
 #include "my_error.hpp"
 #include "span.hpp"
 #include "type_def.h"
-#include "inspector_access_base.hpp"
 #include "type_id.hpp"
 
 template <class> constexpr bool assertion_failed_v = false;
@@ -54,7 +54,6 @@ template <class Inspector, class T>
 bool load(Inspector &f, T &x, inspector_access_type::specialization) {
   return inspector_access<T>::apply(f, x);
 }
-
 
 template <class Inspector, class T>
 bool load(Inspector &f, T &x, inspector_access_type::inspect) {
@@ -219,9 +218,9 @@ template <class Inspector, class T> bool save(Inspector &f, const T &x) {
   if constexpr (!std::is_function<T>::value) {
     return save(f, as_mutable_ref(x), inspect_access_type<Inspector, T>());
   } else {
-    // Only inspector such as the string specification_inspector are going to accept
-    // function pointers. Most other inspectors are going to trigger a static
-    // assertion when passing `inspector_access_type::none`.
+    // Only inspector such as the string specification_inspector are going to
+    // accept function pointers. Most other inspectors are going to trigger a
+    // static assertion when passing `inspector_access_type::none`.
     auto fptr = std::add_pointer_t<T>{x};
     return save(f, fptr, inspector_access_type::none{});
   }
@@ -249,7 +248,6 @@ bool save_field(Inspector &f, std::string_view field_name,
 
 /// Customization point for adding support for a custom type.
 template <class T> struct inspector_access;
-
 
 // -- inspection support for optional values -----------------------------------
 
@@ -312,7 +310,6 @@ template <class T> struct optional_inspector_access {
 template <class T>
 struct inspector_access<std::optional<T>>
     : optional_inspector_access<std::optional<T>> {};
-
 
 template <class T>
 struct optional_inspector_traits<std::optional<T>>
@@ -519,9 +516,7 @@ struct inspector_access<std::chrono::duration<Rep, Period>>
         print(str, x);
         return str;
       };
-      auto set = [&x](std::string str) {
-        return false;
-      };
+      auto set = [&x](std::string str) { return false; };
       return f.apply(get, set);
     } else {
       auto get = [&x] { return x.count(); };
@@ -563,21 +558,19 @@ struct inspector_access<
   }
 };
 
-
 // print functions
 
-template <class Buffer>
-void print(Buffer& buf, bool x) {
+template <class Buffer> void print(Buffer &buf, bool x) {
   using namespace std::literals;
   auto str = x ? "true"sv : "false"sv;
   buf.insert(buf.end(), str.begin(), str.end());
 }
 
 template <class Buffer, class T>
-std::enable_if_t<std::is_integral<T>::value> print(Buffer& buf, T x) {
+std::enable_if_t<std::is_integral<T>::value> print(Buffer &buf, T x) {
   // An integer can at most have 20 digits (UINT64_MAX).
   char stack_buffer[24];
-  char* p = stack_buffer;
+  char *p = stack_buffer;
   // Convert negative values into positives as necessary.
   if constexpr (std::is_signed<T>::value) {
     if (x == std::numeric_limits<T>::min()) {
@@ -618,7 +611,7 @@ std::enable_if_t<std::is_integral<T>::value> print(Buffer& buf, T x) {
 }
 
 template <class Buffer, class T>
-std::enable_if_t<std::is_floating_point<T>::value> print(Buffer& buf, T x) {
+std::enable_if_t<std::is_floating_point<T>::value> print(Buffer &buf, T x) {
   // TODO: Check whether to_chars is available on supported compilers and
   //       re-implement using the new API as soon as possible.
   auto str = std::to_string(x);
@@ -634,7 +627,7 @@ std::enable_if_t<std::is_floating_point<T>::value> print(Buffer& buf, T x) {
 }
 
 template <class Buffer, class Rep, class Period>
-void print(Buffer& buf, std::chrono::duration<Rep, Period> x) {
+void print(Buffer &buf, std::chrono::duration<Rep, Period> x) {
   using namespace std::literals;
   if (x.count() == 0) {
     auto str = "0s"sv;
@@ -654,11 +647,11 @@ void print(Buffer& buf, std::chrono::duration<Rep, Period> x) {
   using seconds = std::chrono::duration<double>;
   using milliseconds = std::chrono::duration<double, std::milli>;
   using microseconds = std::chrono::duration<double, std::micro>;
-  if (try_print(std::chrono::duration_cast<hours>(x), "h")
-      || try_print(std::chrono::duration_cast<minutes>(x), "min")
-      || try_print(std::chrono::duration_cast<seconds>(x), "s")
-      || try_print(std::chrono::duration_cast<milliseconds>(x), "ms")
-      || try_print(std::chrono::duration_cast<microseconds>(x), "us"))
+  if (try_print(std::chrono::duration_cast<hours>(x), "h") ||
+      try_print(std::chrono::duration_cast<minutes>(x), "min") ||
+      try_print(std::chrono::duration_cast<seconds>(x), "s") ||
+      try_print(std::chrono::duration_cast<milliseconds>(x), "ms") ||
+      try_print(std::chrono::duration_cast<microseconds>(x), "us"))
     return;
   auto converted = std::chrono::duration_cast<std::chrono::nanoseconds>(x);
   print(buf, converted.count());
@@ -689,7 +682,7 @@ void print(Buffer& buf, std::chrono::duration<Rep, Period> x) {
 // }
 
 template <class Buffer, class Duration>
-void print(Buffer& buf,
+void print(Buffer &buf,
            std::chrono::time_point<std::chrono::system_clock, Duration> x) {
   namespace sc = std::chrono;
   using clock_type = sc::system_clock;

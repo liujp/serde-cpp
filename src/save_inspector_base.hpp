@@ -59,9 +59,9 @@ public:
     if (!dref().begin_associative_array(xs.size())) /*begin_sequence(size)*/
       return false;
     for (auto &&kvp : xs) {
-      if (!(dref().begin_key_value_pair() /*return true*/
-            && save(dref(), kvp.first)    //
-            && save(dref(), kvp.second)   //
+      if (!(dref().begin_key_value_pair()    /*return true*/
+            && save(dref(), kvp.first)       //
+            && save(dref(), kvp.second)      //
             && dref().end_key_value_pair())) /*return true*/
         return false;
     }
@@ -74,7 +74,7 @@ public:
     using std::get;
     return dref().begin_tuple(sizeof...(Is))     /*return true*/
            && (save(dref(), get<Is>(xs)) && ...) //
-           && dref().end_tuple(); /*return true*/
+           && dref().end_tuple();                /*return true*/
   }
 
   template <class T> bool tuple(const T &xs) {
