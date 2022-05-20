@@ -14,7 +14,6 @@ std::false_type is_complete_impl(...);
 
 template <class... Ts> struct type_list {
   constexpr type_list() {
-    // nop
   }
 };
 

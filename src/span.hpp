@@ -22,7 +22,6 @@ using remove_reference_t = typename std::remove_reference<T>::type;
 
 template <class T> class span {
 public:
-  // -- member types -----------------------------------------------------------
   using element_type = T;
   using value_type = typename std::remove_cv<T>::type;
   using index_type = size_t;
@@ -35,8 +34,6 @@ public:
   using const_iterator = const_pointer;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-  // -- constructors, destructors, and assignment operators --------------------
   constexpr span() noexcept : begin_(nullptr), size_(0) {}
   constexpr span(pointer ptr, size_t size) : begin_(ptr), size_(size) {}
   constexpr span(pointer first, pointer last)
@@ -59,8 +56,6 @@ public:
   constexpr span(const span &) noexcept = default;
 
   span &operator=(const span &) noexcept = default;
-
-  // -- iterators --------------------------------------------------------------
 
   constexpr iterator begin() const noexcept { return begin_; }
 
@@ -86,8 +81,6 @@ public:
     return const_reverse_iterator{begin()};
   }
 
-  // -- element access ---------------------------------------------------------
-
   constexpr reference operator[](size_t index) const noexcept {
     return begin_[index];
   }
@@ -95,8 +88,6 @@ public:
   constexpr reference front() const noexcept { return *begin_; }
 
   constexpr reference back() const noexcept { return (*this)[size_ - 1]; }
-
-  // -- properties -------------------------------------------------------------
 
   constexpr size_t size() const noexcept { return size_; }
 
@@ -107,8 +98,6 @@ public:
   constexpr bool empty() const noexcept { return size_ == 0; }
 
   constexpr pointer data() const noexcept { return begin_; }
-
-  // -- subviews ---------------------------------------------------------------
 
   constexpr span subspan(size_t offset, size_t num_bytes) const {
     return {begin_ + offset, num_bytes};
@@ -125,8 +114,6 @@ public:
   }
 
 private:
-  // this class look like a strign view data and the pointer/size is saved in
-  // this structure
   pointer begin_;
   size_t size_;
 };
@@ -156,25 +143,17 @@ template <class T> span<std::byte> as_writable_bytes(span<T> xs) {
   return {reinterpret_cast<std::byte *>(xs.data()), xs.size_bytes()};
 }
 
-/// Convenience function to make using `caf::span` more convenient without the
-/// deduction guides.
 template <class T>
 auto make_span(T &xs) -> span<remove_reference_t<decltype(xs[0])>> {
   return {xs.data(), xs.size()};
 }
 
-/// Convenience function to make using `caf::span` more convenient without the
-/// deduction guides.
 template <class T, size_t N> span<T> make_span(T (&xs)[N]) { return {xs, N}; }
 
-/// Convenience function to make using `caf::span` more convenient without the
-/// deduction guides.
 template <class T> span<T> make_span(T *first, size_t size) {
   return {first, size};
 }
 
-/// Convenience function to make using `caf::span` more convenient without the
-/// deduction guides.
 template <class T> span<T> make_span(T *first, T *last) {
   return {first, last};
 }

@@ -1,7 +1,3 @@
-// This file is part of CAF, the C++ Actor Framework. See the file LICENSE in
-// the main distribution directory for license terms and copyright or visit
-// https://github.com/actor-framework/actor-framework/blob/master/LICENSE.
-
 #include <cassert>
 #include <cstring>
 #include <iomanip>
@@ -209,10 +205,6 @@ bool binary_deserializer::value(double &x) noexcept {
 }
 
 bool binary_deserializer::value(long double &x) {
-  // TODO: Our IEEE-754 conversion currently does not work for long double. The
-  //       standard does not guarantee a fixed representation for this type, but
-  //       on X86 we can usually rely on 80-bit precision. For now, we fall back
-  //       to string conversion.
   std::string tmp;
   if (!value(tmp))
     return false;

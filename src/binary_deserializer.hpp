@@ -1,7 +1,3 @@
-// This file is part of CAF, the C++ Actor Framework. See the file LICENSE in
-// the main distribution directory for license terms and copyright or visit
-// https://github.com/actor-framework/actor-framework/blob/master/LICENSE.
-
 #pragma once
 
 #include <cstddef>
@@ -18,8 +14,7 @@
 #include "type_def.h"
 #include "type_id.hpp"
 
-/// Deserializes C++ objects from sequence of bytes. Does not perform
-/// run-time type checks.
+
 class binary_deserializer : public load_inspector_base<binary_deserializer> {
 public:
   binary_deserializer() : current_(nullptr), end_(nullptr) {}
@@ -36,27 +31,20 @@ public:
       : binary_deserializer(
             make_span(reinterpret_cast<const std::byte *>(buf), size)) {}
 
-  /// Returns how many bytes are still available to read.
   size_t remaining() const noexcept {
     return static_cast<size_t>(end_ - current_);
   }
 
-  /// Returns the remaining bytes.
   span<const std::byte> remainder() const noexcept {
     return make_span(current_, end_);
   }
 
-  /// Jumps `num_bytes` forward.
-  /// @pre `num_bytes <= remaining()`
   void skip(size_t num_bytes);
 
-  /// Assigns a new input.
   void reset(span<const std::byte> bytes) noexcept;
 
-  /// Returns the current read position.
   const std::byte *current() const noexcept { return current_; }
 
-  /// Returns the end of the assigned memory block.
   const std::byte *end() const noexcept { return end_; }
 
   static constexpr bool has_human_readable_format() noexcept { return false; }

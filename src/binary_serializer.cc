@@ -32,9 +32,6 @@ void binary_serializer::skip(size_t num_bytes) {
   write_pos_ += num_bytes;
 }
 
-// Use varbyte encoding to compress sequence size on the wire.
-// For 64-bit values, the encoded representation cannot get larger than 10
-// bytes. A scratch space of 16 bytes suffices as upper bound.
 bool binary_serializer::begin_sequence(size_t list_size) {
   uint8_t buf[16];
   auto i = buf;
@@ -138,10 +135,6 @@ bool binary_serializer::value(float x) { return int_value(*this, pack754(x)); }
 
 bool binary_serializer::value(double x) { return int_value(*this, pack754(x)); }
 
-// TODO: Our IEEE-754 conversion currently does not work for long double. The
-//       standard does not guarantee a fixed representation for this type, but
-//       on X86 we can usually rely on 80-bit precision. For now, we fall back
-//       to string conversion.
 bool binary_serializer::value(long double x) {
   std::ostringstream oss;
   oss << std::setprecision(std::numeric_limits<long double>::digits) << x;
@@ -160,7 +153,6 @@ bool binary_serializer::value(const std::u16string &x) {
   auto str_size = x.size();
   if (!begin_sequence(str_size))
     return false;
-  // The standard does not guarantee that char16_t is exactly 16 bits.
   for (auto c : x)
     int_value(*this, static_cast<uint16_t>(c));
   return end_sequence();
@@ -170,7 +162,6 @@ bool binary_serializer::value(const std::u32string &x) {
   auto str_size = x.size();
   if (!begin_sequence(str_size))
     return false;
-  // The standard does not guarantee that char32_t is exactly 32 bits.
   for (auto c : x)
     int_value(*this, static_cast<uint32_t>(c));
   return end_sequence();
